@@ -4,6 +4,8 @@ import { Container, Typography, List, ListItem, LinearProgress, Box } from "@mui
 import { apiConfig } from "../config/ApiConfig";
 import {useAuthFetch} from "../config/authFetch";
 import {AuthContext} from "../context/AuthContext";
+import * as signalR from "@microsoft/signalr";
+
 
 interface OptionResult {
     optionText: string;
@@ -22,15 +24,41 @@ const VoteResultsPage = () => {
     const authFetch = useAuthFetch();
     const { user } = useContext(AuthContext)!;
 
+    // useEffect(() => {
+    //     authFetch(`${apiConfig.getBaseUrl()}/api/votes/${voteId}/results`, {
+    //         headers: {
+    //             Authorization: `Bearer ${user.token}`
+    //         }
+    //     })
+    //         .then(res => res.json())
+    //         .then(data => setResults(data));
+    // }, [voteId]);
+
     useEffect(() => {
-        authFetch(`${apiConfig.getBaseUrl()}/api/votes/${voteId}/results`, {
-            headers: {
-                Authorization: `Bearer ${user.token}`
-            }
-        })
-            .then(res => res.json())
-            .then(data => setResults(data));
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl(`${apiConfig.getBaseUrl()}/hubs/vote`)
+            .withAutomaticReconnect()
+            .build();
+
+        connection.start().then(() => {
+            connection.on("ReceiveVoteUpdate", (updatedVoteId: number) => {
+                if (Number(voteId) === updatedVoteId) {
+                    authFetch(`${apiConfig.getBaseUrl()}/api/votes/${voteId}/results`, {
+                        headers: {
+                            Authorization: `Bearer ${user.token}`
+                        }
+                    })
+                        .then(res => res.json())
+                        .then(data => setResults(data));
+                }
+            });
+        });
+
+        return () => {
+            connection.stop();
+        };
     }, [voteId]);
+
 
     if (!results) return <Container><Typography>Loading...</Typography></Container>;
 

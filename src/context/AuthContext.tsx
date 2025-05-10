@@ -1,17 +1,17 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import {apiConfig} from "../config/ApiConfig";
 
 interface User {
     id: string;
     name: string;
     token: string;             // Access token
     refreshToken: string;      // Refresh token
-    role: string;
     isAuthenticated: boolean;
 }
 
 interface AuthContextType {
     user: User;
-    login: (accessToken: string, refreshToken: string, userId: string, name: string, role: string) => void;
+    login: (accessToken: string, refreshToken: string, userId: string, name: string) => void;
     logout: () => void;
 }
 
@@ -25,13 +25,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             : { id: "", name: "", token: "", refreshToken: "", role: "", isAuthenticated: false };
     });
 
-    const login = (accessToken: string, refreshToken: string, userId: string, name: string, role: string) => {
+    const login = (accessToken: string, refreshToken: string, userId: string, name: string) => {
         const newUser = {
             id: userId,
             name,
             token: accessToken,
             refreshToken,
-            role,
             isAuthenticated: true
         };
         setUser(newUser);
@@ -46,12 +45,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         localStorage.removeItem("user");
     };
 
+    // useEffect(() => {
+    //     const saved = localStorage.getItem("user");
+    //     if (saved) {
+    //         setUser(JSON.parse(saved));
+    //     }
+    // }, []);
+
     useEffect(() => {
-        const saved = localStorage.getItem("user");
-        if (saved) {
-            setUser(JSON.parse(saved));
-        }
+        const tryRefresh = async () => {
+            const saved = localStorage.getItem("user");
+            if (!saved) return;
+
+            const parsed = JSON.parse(saved);
+            const { token, refreshToken } = parsed;
+
+            if (token && refreshToken) {
+                const res = await fetch(`${apiConfig.getBaseUrl()}/api/auth/refresh-token`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        accessToken: token,
+                        refreshToken: refreshToken
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    login(data.accessToken, data.refreshToken, data.userId, data.userName);
+                } else {
+                    logout();
+                }
+            }
+        };
+
+        tryRefresh();
     }, []);
+
 
     return (
         <AuthContext.Provider value={{ user, login, logout }}>

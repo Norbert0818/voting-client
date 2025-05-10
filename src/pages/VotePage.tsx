@@ -7,6 +7,8 @@ import {
 import { apiConfig } from "../config/ApiConfig";
 import { AuthContext } from "../context/AuthContext";
 import {useAuthFetch} from "../config/authFetch";
+import * as signalR from "@microsoft/signalr";
+
 
 interface VoteOption {
     id: number;
@@ -38,39 +40,63 @@ const VotePage = () => {
     const [selectedOptionIds, setSelectedOptionIds] = useState<number[]>([]);
     const authFetch = useAuthFetch();
 
+    const fetchVote = async () => {
+        const response = await authFetch(`${apiConfig.getBaseUrl()}/api/votes/assigned`, {
+            headers: { Authorization: `Bearer ${user.token}` },
+        });
+        const data = await response.json();
+        const found = data.find((v: Vote) => v.id === Number(id));
+        if (!found) {
+            navigate("/");
+            return;
+        }
+        setVote(found);
+    };
+
+    const fetchUserVotes = async () => {
+        const response = await authFetch(`${apiConfig.getBaseUrl()}/api/votes/my-votes`, {
+            headers: {
+                Authorization: `Bearer ${user.token}`,
+            },
+        });
+        const data = await response.json();
+        const voteData = data.find((v: any) => v.voteId === Number(id));
+        if (voteData?.selectedOptions && Array.isArray(voteData.selectedOptions)) {
+            const options: VoteOption[] = voteData.selectedOptions.map((opt: any) => ({
+                id: opt.id,
+                optionText: opt.text,
+            }));
+            setUserVotedOptions(options);
+        }
+    };
+
     useEffect(() => {
-        const fetchVote = async () => {
-            const response = await fetch(`${apiConfig.getBaseUrl()}/api/votes/active`);
-            const data = await response.json();
-            const found = data.find((v: Vote) => v.id === Number(id));
-            if (!found) {
-                navigate("/"); // ha nincs ilyen szavazás, vissza Home
-                return;
-            }
-            setVote(found);
-        };
-
-        const fetchUserVotes = async () => {
-            const response = await authFetch(`${apiConfig.getBaseUrl()}/api/votes/my-votes`, {
-                headers: {
-                    Authorization: `Bearer ${user.token}`,
-                },
-            });
-            const data = await response.json();
-            const voteData = data.find((v: any) => v.voteId === Number(id));
-            if (voteData?.selectedOptions && Array.isArray(voteData.selectedOptions)) {
-                const options: VoteOption[] = voteData.selectedOptions.map((opt: any) => ({
-                    id: opt.id,
-                    optionText: opt.text,
-                }));
-                setUserVotedOptions(options);
-            }
-
-        };
-
         fetchVote();
         fetchUserVotes();
-    }, [id, navigate, user.id, user.token]);
+    }, [id]);
+
+    useEffect(() => {
+        if (!vote?.id) return;
+
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl(`${apiConfig.getBaseUrl()}/hubs/vote`)
+            .withAutomaticReconnect()
+            .build();
+
+        connection.start().then(() => {
+            connection.on("ReceiveVoteUpdate", (updatedVoteId: number) => {
+                if (updatedVoteId === vote.id) {
+                    fetchVote();
+                }
+            });
+        });
+
+        return () => {
+            connection.stop();
+        };
+    }, [vote?.id]);
+
+
 
     const handleVoteSubmit = async () => {
 
@@ -106,6 +132,11 @@ const VotePage = () => {
 
     if (!vote) return null;
 
+
+    const now = new Date();
+    const voteStart = new Date(vote.startTime);
+    const voteNotStarted = now < voteStart;
+
     return (
         <Container maxWidth="sm" sx={{ marginTop: 4 }}>
             <Card>
@@ -118,28 +149,54 @@ const VotePage = () => {
                         Select between {vote.minSelectableOptions} and {vote.maxSelectableOptions} option(s)
                     </Typography>
 
-                    {userVotedOptions.length > 0 ? (
+                    {/*{userVotedOptions.length > 0 ? (*/}
+                    {/*    <Typography variant="body1" color="primary" sx={{ mt: 3 }}>*/}
+                    {/*        You already voted: <strong>{userVotedOptions.map(o => o.optionText).join(", ")}</strong>*/}
+                    {/*    </Typography>*/}
+                    {/*) : (*/}
+                    {/*    <>*/}
+                    {/*        <FormControl component="fieldset" sx={{ mt: 3 }}>*/}
+                    {/*            {vote.options.map((option) => (*/}
+                    {/*                <FormControlLabel*/}
+                    {/*                    key={option.id}*/}
+                    {/*                    control={*/}
+                    {/*                        <Checkbox*/}
+                    {/*                            checked={selectedOptionIds.includes(option.id)}*/}
+                    {/*                            onChange={() => {*/}
+                    {/*                                setSelectedOptionIds(prev =>*/}
+                    {/*                                    prev.includes(option.id)*/}
+                    {/*                                        ? prev.filter(id => id !== option.id)*/}
+                    {/*                                        : [...prev, option.id]*/}
+                    {/*                                );*/}
+                    {/*                            }}*/}
+                    {/*                        />*/}
+                    {/*                    }*/}
+                    {/*                    label={option.optionText}*/}
+                    {/*                />*/}
+                    {/*            ))}*/}
+                    {/*        </FormControl>*/}
+                    {/*        <Button*/}
+                    {/*            variant="contained"*/}
+                    {/*            color="primary"*/}
+                    {/*            fullWidth*/}
+                    {/*            sx={{ mt: 3 }}*/}
+                    {/*            onClick={handleVoteSubmit}*/}
+                    {/*        >*/}
+                    {/*            Submit Vote*/}
+                    {/*        </Button>*/}
+                    {/*    </>*/}
+                    {/*)}*/}
+
+                    {voteNotStarted ? (
+                        <Typography variant="body1" color="warning.main" sx={{ mt: 3 }}>
+                            ⚠️ Voting has not started yet. Please come back at {formatDateTime(vote.startTime)}.
+                        </Typography>
+                    ) : userVotedOptions.length > 0 ? (
                         <Typography variant="body1" color="primary" sx={{ mt: 3 }}>
                             You already voted: <strong>{userVotedOptions.map(o => o.optionText).join(", ")}</strong>
                         </Typography>
                     ) : (
                         <>
-                            {/*Basic level*/}
-                            {/*<FormControl component="fieldset" sx={{ mt: 3 }}>*/}
-                            {/*    <RadioGroup*/}
-                            {/*        value={selectedOptionId ?? ""}*/}
-                            {/*        onChange={(e) => setSelectedOptionId(Number(e.target.value))}*/}
-                            {/*    >*/}
-                            {/*        {vote.options.map((option) => (*/}
-                            {/*            <FormControlLabel*/}
-                            {/*                key={option.id}*/}
-                            {/*                value={option.id}*/}
-                            {/*                control={<Radio />}*/}
-                            {/*                label={option.optionText}*/}
-                            {/*            />*/}
-                            {/*        ))}*/}
-                            {/*    </RadioGroup>*/}
-                            {/*</FormControl>*/}
                             <FormControl component="fieldset" sx={{ mt: 3 }}>
                                 {vote.options.map((option) => (
                                     <FormControlLabel
@@ -171,6 +228,7 @@ const VotePage = () => {
                             </Button>
                         </>
                     )}
+
                 </CardContent>
             </Card>
         </Container>

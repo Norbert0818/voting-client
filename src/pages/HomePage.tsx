@@ -36,7 +36,7 @@ const HomePage = () => {
 
     useEffect(() => {
         if (isAuthenticated) {
-            fetch(`${apiConfig.getBaseUrl()}/api/votes/active`)
+            authFetch(`${apiConfig.getBaseUrl()}/api/votes/assigned`)
                 .then(res => res.json())
                 .then((data) => {
                     // const now = new Date();
@@ -47,9 +47,7 @@ const HomePage = () => {
                     setVotes(data);
                 });
 
-            authFetch(`${apiConfig.getBaseUrl()}/api/votes/my-votes`, {
-                headers: { Authorization: `Bearer ${user.token}` }
-            })
+            authFetch(`${apiConfig.getBaseUrl()}/api/votes/my-votes`)
                 .then(async res => {
                     if (!res.ok) {
                         throw new Error(`Failed to fetch user votes: ${res.status}`);

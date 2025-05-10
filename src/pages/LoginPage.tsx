@@ -25,7 +25,7 @@ const LoginPage = () => {
             }
 
             const data = await response.json();
-            login(data.accessToken, data.refreshToken, data.userId, data.userName, data.role);
+            login(data.accessToken, data.refreshToken, data.userId, data.userName);
             console.log(data.token);
             navigate("/");
         } catch (error) {

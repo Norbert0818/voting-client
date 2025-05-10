@@ -28,7 +28,7 @@ export const useAuthFetch = () => {
             if (refreshResponse.ok) {
                 const data = await refreshResponse.json();
 
-                login(data.accessToken, data.refreshToken, user.id, user.name, user.role);
+                login(data.accessToken, data.refreshToken, user.id, user.name);
 
                 return await authFetch(url, options, false);
             } else {
