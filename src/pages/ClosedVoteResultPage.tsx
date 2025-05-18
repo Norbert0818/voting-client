@@ -4,7 +4,6 @@ import { Container, Typography, LinearProgress, Box } from "@mui/material";
 import { AuthContext } from "../context/AuthContext";
 import { apiConfig } from "../config/ApiConfig";
 import {useAuthFetch} from "../config/authFetch";
-import * as signalR from "@microsoft/signalr";
 
 
 interface OptionResult {
@@ -24,43 +23,43 @@ const ClosedVoteResultPage = () => {
     const [results, setResults] = useState<VoteResultsResponse | null>(null);
     const authFetch = useAuthFetch();
 
-    // useEffect(() => {
-    //     authFetch(`${apiConfig.getBaseUrl()}/api/votes/${voteId}/results`, {
-    //         headers: {
-    //             Authorization: `Bearer ${user.token}`
-    //         }
-    //     })
-    //         .then(res => res.json())
-    //         .then(setResults)
-    //         .catch((err) => {
-    //             console.error("Error loading results:", err);
-    //         });
-    // }, [voteId]);
-
     useEffect(() => {
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl(`${apiConfig.getBaseUrl()}/hubs/vote`)
-            .withAutomaticReconnect()
-            .build();
-
-        connection.start().then(() => {
-            connection.on("ReceiveVoteUpdate", (updatedVoteId: number) => {
-                if (Number(voteId) === updatedVoteId) {
-                    authFetch(`${apiConfig.getBaseUrl()}/api/votes/${voteId}/results`, {
-                        headers: {
-                            Authorization: `Bearer ${user.token}`
-                        }
-                    })
-                        .then(res => res.json())
-                        .then(data => setResults(data));
-                }
+        authFetch(`${apiConfig.getBaseUrl()}/api/votes/${voteId}/results`, {
+            headers: {
+                Authorization: `Bearer ${user.token}`
+            }
+        })
+            .then(res => res.json())
+            .then(setResults)
+            .catch((err) => {
+                console.error("Error loading results:", err);
             });
-        });
-
-        return () => {
-            connection.stop();
-        };
     }, [voteId]);
+
+    // useEffect(() => {
+    //     const connection = new signalR.HubConnectionBuilder()
+    //         .withUrl(`${apiConfig.getBaseUrl()}/hubs/vote`)
+    //         .withAutomaticReconnect()
+    //         .build();
+    //
+    //     connection.start().then(() => {
+    //         connection.on("ReceiveVoteUpdate", (updatedVoteId: number) => {
+    //             if (Number(voteId) === updatedVoteId) {
+    //                 authFetch(`${apiConfig.getBaseUrl()}/api/votes/${voteId}/results`, {
+    //                     headers: {
+    //                         Authorization: `Bearer ${user.token}`
+    //                     }
+    //                 })
+    //                     .then(res => res.json())
+    //                     .then(data => setResults(data));
+    //             }
+    //         });
+    //     });
+    //
+    //     return () => {
+    //         connection.stop();
+    //     };
+    // }, [voteId]);
 
 
     if (!results) return <Container sx={{ mt: 4 }}><Typography>Loading results...</Typography></Container>;

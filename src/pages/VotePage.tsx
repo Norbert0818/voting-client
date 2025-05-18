@@ -7,7 +7,7 @@ import {
 import { apiConfig } from "../config/ApiConfig";
 import { AuthContext } from "../context/AuthContext";
 import {useAuthFetch} from "../config/authFetch";
-import * as signalR from "@microsoft/signalr";
+// import * as signalR from "@microsoft/signalr";
 
 
 interface VoteOption {
@@ -75,26 +75,26 @@ const VotePage = () => {
         fetchUserVotes();
     }, [id]);
 
-    useEffect(() => {
-        if (!vote?.id) return;
-
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl(`${apiConfig.getBaseUrl()}/hubs/vote`)
-            .withAutomaticReconnect()
-            .build();
-
-        connection.start().then(() => {
-            connection.on("ReceiveVoteUpdate", (updatedVoteId: number) => {
-                if (updatedVoteId === vote.id) {
-                    fetchVote();
-                }
-            });
-        });
-
-        return () => {
-            connection.stop();
-        };
-    }, [vote?.id]);
+    // useEffect(() => {
+    //     if (!vote?.id) return;
+    //
+    //     const connection = new signalR.HubConnectionBuilder()
+    //         .withUrl(`${apiConfig.getBaseUrl()}/hubs/vote`)
+    //         .withAutomaticReconnect()
+    //         .build();
+    //
+    //     connection.start().then(() => {
+    //         connection.on("ReceiveVoteUpdate", (updatedVoteId: number) => {
+    //             if (updatedVoteId === vote.id) {
+    //                 fetchVote();
+    //             }
+    //         });
+    //     });
+    //
+    //     return () => {
+    //         connection.stop();
+    //     };
+    // }, [vote?.id]);
 
 
 
