@@ -39,12 +39,12 @@ const HomePage = () => {
             authFetch(`${apiConfig.getBaseUrl()}/api/votes/assigned`)
                 .then(res => res.json())
                 .then((data) => {
-                    // const now = new Date();
-                    // const activeVotes = data
-                    //     .filter((vote: Vote) => new Date(vote.endTime) > now)
-                    //     .sort((a: Vote, b: Vote) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime());
-                    // setVotes(activeVotes);
-                    setVotes(data);
+                    const now = new Date();
+                    const activeVotes = data
+                        .filter((vote: Vote) => new Date(vote.endTime) > now)
+                        .sort((a: Vote, b: Vote) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime());
+                    setVotes(activeVotes);
+                    // setVotes(data);
                 });
 
             authFetch(`${apiConfig.getBaseUrl()}/api/votes/my-votes`)
